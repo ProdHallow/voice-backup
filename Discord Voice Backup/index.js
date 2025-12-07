@@ -210,7 +210,9 @@ function bindConnectionInstance(instance) {
                 }
                 
                 Object.assign(options, {
+					rate: 48000,
                     encodingBitRate: 512000,
+					pacsize: 960
                 });
                 
                 return instance.setTransportOptions(options);                
@@ -539,3 +541,4 @@ VoiceEngine.initialize({
 });
 
 module.exports = VoiceEngine;
+
