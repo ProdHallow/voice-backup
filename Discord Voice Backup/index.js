@@ -199,26 +199,28 @@ function bindConnectionInstance(instance) {
   return {
     destroy: () => instance.destroy(),
 
-            setTransportOptions: (options) => {
-                if (options.audioEncoder) {
-                    Object.assign(options.audioEncoder, {
-                        params: {
-                            channels: 1
-                        },
-                        channels: 2,
-                    });
-                }
-                
-                Object.assign(options, {
-					rate: 48000,
-                    encodingBitRate: 512000,
-					pacsize: 960
-                });
-                
-                return instance.setTransportOptions(options);                
-            },    
-	
-	setSelfMute: (mute) => instance.setSelfMute(mute),
+    setTransportOptions: (options) => {
+      if (options.audioEncoder) {
+        Object.assign(options.audioEncoder, {
+          channels: 2,
+          rate: 48000,
+          freq: 512000,
+          pacsize: 960
+        })
+      }
+
+      if (options.packetLossRate) {
+        options.packetLossRate = 0
+      }
+
+      if (options.encodingVoiceBitRate) {
+        options.encodingVoiceBitRate = 512000
+      }
+
+      return instance.setTransportOptions(options)
+    },
+
+    setSelfMute: (mute) => instance.setSelfMute(mute),
     setSelfDeafen: (deaf) => instance.setSelfDeafen(deaf),
 
     mergeUsers: (users) => instance.mergeUsers(users),
@@ -541,4 +543,3 @@ VoiceEngine.initialize({
 });
 
 module.exports = VoiceEngine;
-
