@@ -23,10 +23,10 @@ try {
   console.error('Failed to get data directory: ', e);
 }
 
-const useLegacyAudioDevice = appSettings ? appSettings.getSync('useLegacyAudioDevice') : false;
-const audioSubsystemSelected = appSettings ? appSettings.getSync('audioSubsystem') : 'standard';
-const audioSubsystem = useLegacyAudioDevice || audioSubsystemSelected;
-const debugLogging = appSettings ? appSettings.getSync('debugLogging', true) : true;
+const useLegacyAudioDevice = appSettings?.get('useLegacyAudioDevice') ?? true;
+const audioSubsystemSelected = appSettings?.get('audioSubsystem') ?? "legacy";
+const audioSubsystem = useLegacyAudioDevice ? "legacy" : audioSubsystemSelected;
+const debugLogging = false;
 
 function versionGreaterThanOrEqual(v1, v2) {
   const v1parts = v1.split('.').map(Number);
@@ -204,7 +204,7 @@ function bindConnectionInstance(instance) {
         Object.assign(options.audioEncoder, {
           channels: 2,
           rate: 48000,
-          freq: 512000,
+          freq: 520000,
           pacsize: 960
         })
       }
@@ -214,12 +214,11 @@ function bindConnectionInstance(instance) {
       }
 
       if (options.encodingVoiceBitRate) {
-        options.encodingVoiceBitRate = 512000
+        options.encodingVoiceBitRate = 520000
       }
 
       return instance.setTransportOptions(options)
     },
-
     setSelfMute: (mute) => instance.setSelfMute(mute),
     setSelfDeafen: (deaf) => instance.setSelfDeafen(deaf),
 
@@ -277,6 +276,7 @@ function bindConnectionInstance(instance) {
     getFilteredStats: (filter, callback) => instance.getFilteredStats(filter, callback),
     startReplay: () => instance.startReplay(),
     setClipRecordUser: (userId, dataType, shouldRecord) => instance.setClipRecordUser(userId, dataType, shouldRecord),
+    setCallExperience: (bucket) => instance.setCallExperience(bucket),
     setRtcLogMarker: (marker) => instance.setRtcLogMarker(marker),
     startSamplesLocalPlayback: (samplesId, options, channels, callback) =>
       instance.startSamplesLocalPlayback(samplesId, options, channels, callback),
@@ -346,7 +346,7 @@ VoiceEngine.setAudioSubsystem = function (subsystem) {
   }
 
   appSettings.set('audioSubsystem', subsystem);
-  appSettings.set('useLegacyAudioDevice', false);
+  appSettings.set('useLegacyAudioDevice', subsystem === 'legacy');
 
   if (isElectronRenderer) {
     window.DiscordNative.app.relaunch();
