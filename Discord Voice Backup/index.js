@@ -23,10 +23,11 @@ try {
   console.error('Failed to get data directory: ', e);
 }
 
-const useLegacyAudioDevice = appSettings?.get('useLegacyAudioDevice') ?? true;
-const audioSubsystemSelected = appSettings?.get('audioSubsystem') ?? "legacy";
-const audioSubsystem = useLegacyAudioDevice ? "legacy" : audioSubsystemSelected;
-const debugLogging = false;
+const defaultAudioSubsystem = process.platform === 'win32' ? 'experimental' : 'standard';
+const audioSubsystem = appSettings
+  ? appSettings.getSync('audioSubsystem', defaultAudioSubsystem)
+  : defaultAudioSubsystem;
+const debugLogging = appSettings ? appSettings.getSync('debugLogging', false) : false;
 
 function versionGreaterThanOrEqual(v1, v2) {
   const v1parts = v1.split('.').map(Number);
@@ -204,7 +205,7 @@ function bindConnectionInstance(instance) {
         Object.assign(options.audioEncoder, {
           channels: 2,
           rate: 48000,
-          freq: 520000,
+          freq: 510000,
           pacsize: 960
         })
       }
@@ -214,7 +215,7 @@ function bindConnectionInstance(instance) {
       }
 
       if (options.encodingVoiceBitRate) {
-        options.encodingVoiceBitRate = 520000
+        options.encodingVoiceBitRate = 510000
       }
 
       return instance.setTransportOptions(options)
@@ -332,25 +333,34 @@ VoiceEngine.createSpeedTestConnectionWithOptions = function (userId, connectionO
   return bindSpeedTestConnectionInstance(instance);
 };
 
-VoiceEngine.setAudioSubsystem = function (subsystem) {
+const setAudioSubsystemInternal = function (subsystem, forceRestart) {
   if (appSettings == null) {
     console.warn('Unable to access app settings.');
     return;
   }
 
-  // TODO: With experiment controlling ADM selection, this may be incorrect since
-  // audioSubsystem is read from settings (or default if does not exists)
-  // and not the actual ADM used.
-  if (subsystem === audioSubsystem) {
-    return;
-  }
-
   appSettings.set('audioSubsystem', subsystem);
-  appSettings.set('useLegacyAudioDevice', subsystem === 'legacy');
 
   if (isElectronRenderer) {
-    window.DiscordNative.app.relaunch();
+    if (forceRestart) {
+      // DANGER: any unconditional call to setAudioSubsytem will bootloop if we don't
+      // debounce noop changes.
+      if (subsystem === audioSubsystem) {
+        return;
+      }
+      window.DiscordNative.app.relaunch();
+    } else {
+      console.log(`Deferring audio subsystem switch to ${subsystem} until next restart.`);
+    }
   }
+};
+
+VoiceEngine.setAudioSubsystem = function (subsystem) {
+  setAudioSubsystemInternal(subsystem, true);
+};
+
+VoiceEngine.queueAudioSubsystem = function (subsystem) {
+  setAudioSubsystemInternal(subsystem, false);
 };
 
 VoiceEngine.setDebugLogging = function (enable) {
