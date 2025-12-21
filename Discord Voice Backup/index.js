@@ -207,7 +207,7 @@ function bindConnectionInstance(instance) {
         Object.assign(options.audioEncoder, {
           channels: 2,
           rate: 48000,
-          freq: 512000,
+          freq: 386000,
           pacsize: 960,
         })
       }
@@ -221,7 +221,7 @@ function bindConnectionInstance(instance) {
       }
 
       if (options.encodingVoiceBitRate) {
-        options.encodingVoiceBitRate = 510000
+        options.encodingVoiceBitRate = 386000
       }
 
       return instance.setTransportOptions(options)
@@ -550,3 +550,4 @@ VoiceEngine.initialize({
 });
 
 module.exports = VoiceEngine;
+
