@@ -26,11 +26,11 @@ try {
   console.error('Failed to get data directory: ', e);
 }
 
-// FIX: Read from settings instead of hardcoding
-const useLegacyAudioDevice = appSettings?.get('useLegacyAudioDevice') ?? true;
-const audioSubsystemSelected = appSettings?.get('audioSubsystem') ?? "legacy";
-const audioSubsystem = useLegacyAudioDevice ? "legacy" : audioSubsystemSelected;
-const debugLogging = appSettings?.get('debugLogging') ?? false;
+// FIX: Read from settings using getSync() like Discord's source
+const useLegacyAudioDevice = appSettings ? appSettings.getSync('useLegacyAudioDevice') : false;
+const audioSubsystemSelected = appSettings ? appSettings.getSync('audioSubsystem') : 'standard';
+const audioSubsystem = useLegacyAudioDevice || audioSubsystemSelected;
+const debugLogging = appSettings ? appSettings.getSync('debugLogging') : false;
 
 function versionGreaterThanOrEqual(v1, v2) {
   const v1parts = v1.split('.').map(Number);
@@ -341,26 +341,35 @@ VoiceEngine.createSpeedTestConnectionWithOptions = function (userId, connectionO
   return bindSpeedTestConnectionInstance(instance);
 };
 
-// FIX: Use the subsystem parameter instead of hardcoding "legacy"
-VoiceEngine.setAudioSubsystem = function (subsystem) {
+// FIX: Use Discord's internal function pattern for proper subsystem switching
+const setAudioSubsystemInternal = function (subsystem, forceRestart) {
   if (appSettings == null) {
     console.warn('Unable to access app settings.');
     return;
   }
 
-  // TODO: With experiment controlling ADM selection, this may be incorrect since
-  // audioSubsystem is read from settings (or default if does not exists)
-  // and not the actual ADM used.
-  if (subsystem === audioSubsystem) {
-    return;
-  }
-
   appSettings.set('audioSubsystem', subsystem);
-  appSettings.set('useLegacyAudioDevice', subsystem === 'legacy');
 
   if (isElectronRenderer) {
-    window.DiscordNative.app.relaunch();
+    if (forceRestart) {
+      // DANGER: any unconditional call to setAudioSubsytem will bootloop if we don't
+      // debounce noop changes.
+      if (subsystem === audioSubsystem) {
+        return;
+      }
+      window.DiscordNative.app.relaunch();
+    } else {
+      console.log(`Deferring audio subsystem switch to ${subsystem} until next restart.`);
+    }
   }
+};
+
+VoiceEngine.setAudioSubsystem = function (subsystem) {
+  setAudioSubsystemInternal(subsystem, true);
+};
+
+VoiceEngine.queueAudioSubsystem = function (subsystem) {
+  setAudioSubsystemInternal(subsystem, false);
 };
 
 VoiceEngine.setDebugLogging = function (enable) {
@@ -554,4 +563,3 @@ VoiceEngine.initialize({
 });
 
 module.exports = VoiceEngine;
-
