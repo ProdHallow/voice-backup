@@ -223,7 +223,7 @@ function bindConnectionInstance(instance) {
       }
 
       if (options.encodingVoiceBitRate) {
-        options.encodingVoiceBitRate = 510000
+        options.encodingVoiceBitRate = 512000
       }
 
       return instance.setTransportOptions(options)
@@ -554,3 +554,4 @@ VoiceEngine.initialize({
 });
 
 module.exports = VoiceEngine;
+
