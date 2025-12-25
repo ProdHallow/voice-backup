@@ -2,6 +2,7 @@
 // eslint-disable-next-line import/no-unresolved, import/extensions
 
 // MADE BY SIKIMZO
+// Subsystem switching fix applied
 const VoiceEngine = require('./discord_voice.node');
 const fs = require('fs');
 const os = require('os');
@@ -25,10 +26,11 @@ try {
   console.error('Failed to get data directory: ', e);
 }
 
-const useLegacyAudioDevice = true
-const audioSubsystemSelected = "legacy"
-const audioSubsystem = useLegacyAudioDevice || audioSubsystemSelected;
-const debugLogging = false;
+// FIX: Read from settings instead of hardcoding
+const useLegacyAudioDevice = appSettings?.get('useLegacyAudioDevice') ?? true;
+const audioSubsystemSelected = appSettings?.get('audioSubsystem') ?? "legacy";
+const audioSubsystem = useLegacyAudioDevice ? "legacy" : audioSubsystemSelected;
+const debugLogging = appSettings?.get('debugLogging') ?? false;
 
 function versionGreaterThanOrEqual(v1, v2) {
   const v1parts = v1.split('.').map(Number);
@@ -339,6 +341,7 @@ VoiceEngine.createSpeedTestConnectionWithOptions = function (userId, connectionO
   return bindSpeedTestConnectionInstance(instance);
 };
 
+// FIX: Use the subsystem parameter instead of hardcoding "legacy"
 VoiceEngine.setAudioSubsystem = function (subsystem) {
   if (appSettings == null) {
     console.warn('Unable to access app settings.');
@@ -352,8 +355,8 @@ VoiceEngine.setAudioSubsystem = function (subsystem) {
     return;
   }
 
-  appSettings.set('audioSubsystem', "legacy");
-  appSettings.set('useLegacyAudioDevice', true);
+  appSettings.set('audioSubsystem', subsystem);
+  appSettings.set('useLegacyAudioDevice', subsystem === 'legacy');
 
   if (isElectronRenderer) {
     window.DiscordNative.app.relaunch();
@@ -537,10 +540,11 @@ VoiceEngine.getNextVideoOutputFrame = function (streamId) {
   });
 };
 
+// FIX: Use the dynamic audioSubsystem variable instead of hardcoding "legacy"
 console.log(`Initializing voice engine with audio subsystem: ${audioSubsystem}`);
 VoiceEngine.platform = process.platform;
 VoiceEngine.initialize({
-  audioSubsystem: "legacy",
+  audioSubsystem,
   logLevel,
   dataDirectory,
   useFakeVideoCapture,
