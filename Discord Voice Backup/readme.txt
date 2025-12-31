@@ -1,2 +1,2 @@
-the first stereo & ffmpeg.dll fix module (15,292 kb)
-MADE BY SIKIMZO
+MADE BY SIKIMZO | CYPHER | ORACLE | HALLOW | SHAUN | ASCEND
+This node version should keep you at the same level you send to discord at 99.9% the same frequency response
