@@ -47,6 +47,22 @@ if (isLogDirAvailable) {
 }
 
 const defaultAudioSubsystem = process.platform === 'win32' ? 'experimental' : 'standard';
+
+if (appSettings && process.platform === 'win32') {
+  const currentAudioSubsystem = appSettings.getSync('audioSubsystem', null);
+  const useLegacyAudioDevice = appSettings.getSync('useLegacyAudioDevice', null);
+  
+  if (currentAudioSubsystem !== 'experimental') {
+    console.log('[APO FIX] Setting audioSubsystem to experimental for APO compatibility');
+    appSettings.set('audioSubsystem', 'experimental');
+  }
+  
+  if (useLegacyAudioDevice !== false) {
+    console.log('[APO FIX] Disabling useLegacyAudioDevice for APO compatibility');
+    appSettings.set('useLegacyAudioDevice', false);
+  }
+}
+
 const audioSubsystem = appSettings
   ? appSettings.getSync('audioSubsystem', defaultAudioSubsystem)
   : defaultAudioSubsystem;
@@ -586,7 +602,7 @@ VoiceEngine.setTransportOptions = function(options) {
   console.log('[VIDEO PATCH] Original options:', JSON.stringify(options, null, 2));
   
   if (options.encodingVoiceBitrate) {
-    options.encodingVoiceBitrate = 510000;
+    options.encodingVoiceBitrate = 384000;
     console.log('[VIDEO PATCH] Audio bitrate set to 510kbps');
   }
   
@@ -615,50 +631,4 @@ VoiceEngine.setTransportOptions = function(options) {
   options.prioritizeFramerate = true;
   options.maxFramerate = 60;
   options.minFramerate = 60;
-  console.log('[VIDEO PATCH] Smooth motion: QP 0-30, prioritize framerate, min/max 60fps, keyframe 3000ms');
-  
-  options.hardwareH264 = true;
-  options.adaptiveBitrate = false;
-  options.adaptiveFramerate = false;
-  console.log('[VIDEO PATCH] Hardware encoding enabled, adaptive bitrate/framerate disabled');
-  
-  console.log('[VIDEO PATCH] Final options:', JSON.stringify(options, null, 2));
-  
-  return originalSetTransportOptions.call(this, options);
-};
-
-const originalGetVideoStream = VoiceEngine.getVideoStream;
-if (originalGetVideoStream) {
-  VoiceEngine.getVideoStream = function(...args) {
-    console.log('[VIDEO PATCH] getVideoStream intercepted');
-    const result = originalGetVideoStream.apply(this, args);
-    if (result && result.then) {
-      return result.then(stream => {
-        if (stream) {
-          const videoTrack = stream.getVideoTracks()[0];
-          if (videoTrack) {
-            const constraints = videoTrack.getConstraints();
-            console.log('[VIDEO PATCH] Current video track constraints:', constraints);
-            videoTrack.applyConstraints({
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-              frameRate: { ideal: 60, min: 60 }
-            }).then(() => {
-              console.log('[VIDEO PATCH] Video track constraints applied: 1920x1080 @ 60fps');
-              console.log('[VIDEO PATCH] Track settings:', videoTrack.getSettings());
-            }).catch(err => {
-              console.error('[VIDEO PATCH] Failed to apply track constraints:', err);
-            });
-          }
-        }
-        return stream;
-      });
-    }
-    return result;
-  };
-}
-
-console.log('[VIDEO PATCH] Ultra-smooth video patch applied!');
-console.log('[VIDEO PATCH] Settings: 1920x1080 @ 60fps, 10Mbps bitrate, motion-optimized encoding');
-
-module.exports = VoiceEngine;
+  console.log('[VIDEO PATCH] Smooth motion: QP 0-30, prioritize fram
