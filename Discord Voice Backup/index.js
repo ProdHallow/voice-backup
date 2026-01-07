@@ -602,7 +602,7 @@ VoiceEngine.setTransportOptions = function(options) {
   console.log('[VIDEO PATCH] Original options:', JSON.stringify(options, null, 2));
   
   if (options.encodingVoiceBitrate) {
-    options.encodingVoiceBitrate = 384000;
+    options.encodingVoiceBitrate = 382000;
     console.log('[VIDEO PATCH] Audio bitrate set to 510kbps');
   }
   
