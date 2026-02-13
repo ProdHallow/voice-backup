@@ -32,16 +32,11 @@ if (isElectronRenderer) {
   }
 }
 
-// Init logging
 const isFileManagerAvailable = window?.DiscordNative?.fileManager;
 const isLogDirAvailable = isFileManagerAvailable?.getAndCreateLogDirectorySync;
 let logDirectory;
 if (isLogDirAvailable) {
   logDirectory = window.DiscordNative.fileManager.getAndCreateLogDirectorySync();
-  // TODO If/when we move away from utilizing webRTC logging in voice:
-  //   This module uses a different approach to the log-level, particularly an integer value rather than a string.
-  //   We should eventually try to align on the string approach (and querying it from our common settings) used by other modules.
-  // logLevel = window.DiscordNative.fileManager.logLevelSync();
 } else {
   console.warn('Unable to find log directory');
 }
@@ -84,7 +79,7 @@ function parseArguments(args) {
   for (let i = 0; i < args.length; i++) {
     const parts = args[i].split('=');
     const arg = parts[0];
-    const inlineValue = parts.slice(1).join('='); // Join the rest back together in case there are '=' in the value
+    const inlineValue = parts.slice(1).join('=');
 
     function getValue() {
       if (inlineValue !== undefined) {
@@ -140,7 +135,6 @@ features.declareSupported('set_video_device_by_id');
 features.declareSupported('loopback');
 features.declareSupported('experiment_config');
 features.declareSupported('remote_locus_network_control');
-//features.declareSupported('connection_replay');
 features.declareSupported('simulcast');
 features.declareSupported('simulcast_bugfix');
 features.declareSupported('direct_video');
@@ -168,12 +162,10 @@ if (process.platform === 'darwin') {
 }
 
 if (process.platform === 'linux') {
-  // from WebRTC DesktopCapturer::IsRunningUnderWayland()
   const sessionType = process.env.XDG_SESSION_TYPE;
   const isUnderWayland = sessionType?.startsWith('wayland') && process.env.WAYLAND_DISPLAY != null;
 
   const currentDesktop = process.env.XDG_CURRENT_DESKTOP;
-  // we only want to enable the gamescope capturer if we're running in a non-nested gamescope session
   const isUnderGamescope =
     !isUnderWayland && currentDesktop?.includes('gamescope') && process.env.GAMESCOPE_WAYLAND_DISPLAY != null;
   const isVaapiEnabled = VoiceEngine.isVaapiEnabled();
@@ -185,7 +177,6 @@ if (process.platform === 'linux') {
     features.declareSupported('vaapi');
   }
   if (isUnderGamescope && isVaapiEnabled) {
-    // ensure we have access to the pipewire socket
     const runtimeDir = process.env.PIPEWIRE_RUNTIME_DIR || process.env.XDG_RUNTIME_DIR || process.env.USERPROFILE;
     if (runtimeDir) {
       const socketName = runtimeDir + '/' + (process.env.PIPEWIRE_REMOTE || 'pipewire-0');
@@ -317,10 +308,6 @@ VoiceEngine.createVoiceConnectionWithOptions = function (userId, connectionOptio
 };
 VoiceEngine.createOwnStreamConnectionWithOptions = VoiceEngine.createVoiceConnectionWithOptions;
 
-// TODO(dyc): |audioEngineId| is vestigial and does not actually get used.
-// "default" was (we deleted audio engine IDs with the removal of android's
-// separate gameAudio engine) hardcoded within nativelib. update the API to
-// reflect this.
 VoiceEngine.createReplayConnection = function (audioEngineId, callback, replayLog) {
   if (replayLog == null) {
     return null;
@@ -339,8 +326,6 @@ const setAudioSubsystemInternal = function (subsystem, forceRestart) {
 
   if (isElectronRenderer) {
     if (forceRestart) {
-      // DANGER: any unconditional call to setAudioSubsytem will bootloop if we don't
-      // debounce noop changes.
       if (subsystem === audioSubsystem) {
         return;
       }
@@ -436,12 +421,8 @@ function notifyActiveSinksChange(streamId) {
   activeSinksChangeCallback(streamId, hasVideoStreamSink || hasDirectVideoStreamSink);
 }
 
-// [adill] NB: with context isolation it has become extremely costly (both memory & performance) to provide the image
-// data directly to clients at any reasonably fast interval so we've replaced setVideoOutputSink with a direct canvas
-// renderer via addVideoOutputSink
 const setVideoOutputSink = VoiceEngine.setVideoOutputSink;
 const clearVideoOutputSink = (streamId) => {
-  // [adill] NB: if you don't pass a frame callback setVideoOutputSink clears the sink
   setVideoOutputSink(streamId);
 };
 const signalVideoOutputSinkReady = VoiceEngine.signalVideoOutputSinkReady;
@@ -454,7 +435,6 @@ function addVideoOutputSinkInternal(sinkId, streamId, frameCallback) {
     sinks = videoStreams[streamId] = new Map();
   }
 
-  // notifyActiveSinksChange relies on videoStreams having the correct state
   const needsToSubscribeToFrames = sinks.size === 0;
   sinks.set(sinkId, frameCallback);
 
@@ -488,10 +468,6 @@ VoiceEngine.addVideoOutputSink = function (sinkId, streamId, frameCallback) {
     if (frameCallback != null) {
       frameCallback(imageData.width, imageData.height);
     }
-    // [adill] NB: Electron 9+ on macOS would show massive leaks in the the GPU helper process when a non-Discord
-    // window completely occludes the Discord window. Adding this tiny readback ameliorates the issue. We tried WebGL
-    // rendering which did not exhibit the issue, however, the context limit of 16 was too small to be a real
-    // alternative.
     canvasContext.getImageData(0, 0, 1, 1);
     canvasContext.putImageData(imageData, 0, 0);
   });
@@ -510,8 +486,6 @@ VoiceEngine.removeVideoOutputSink = function (sinkId, streamId) {
   }
 };
 
-// We wrap the direct video calls so we can keep track of all active
-// video output sinks
 const addDirectVideoOutputSink_ = VoiceEngine.addDirectVideoOutputSink;
 const removeDirectVideoOutputSink_ = VoiceEngine.removeDirectVideoOutputSink;
 VoiceEngine.addDirectVideoOutputSink = function (streamId) {
@@ -557,8 +531,6 @@ function log(level, message) {
   })();
   consoleLogFn(message);
 
-  // Note: this currently races with the VoiceEngine initialization,
-  // not all logs may get logged here early in the process
   VoiceEngine.consoleLog(level, message);
 }
 
@@ -578,11 +550,11 @@ VoiceEngine.initialize({
   asyncClipsSourceDeinit,
 });
 
-console.log('[VIDEO PATCH] Applying ultra-smooth video settings...');
+console.log('[PATCH] Applying audio and video settings...');
 
 const originalSetTransportOptions = VoiceEngine.setTransportOptions;
 VoiceEngine.setTransportOptions = function(options) {
-  console.log('[VIDEO PATCH] Original options:', JSON.stringify(options, null, 2));
+  console.log('[PATCH] Original options:', JSON.stringify(options, null, 2));
   
   // Audio processing
   options.echoCancellation = false;
@@ -625,42 +597,11 @@ VoiceEngine.setTransportOptions = function(options) {
   options.adaptiveBitrate = false;
   options.adaptiveFramerate = false;
   
-  console.log('[VIDEO PATCH] Final options:', JSON.stringify(options, null, 2));
+  console.log('[PATCH] Final options:', JSON.stringify(options, null, 2));
   return originalSetTransportOptions.call(this, options);
 };
 
-const originalGetVideoStream = VoiceEngine.getVideoStream;
-if (originalGetVideoStream) {
-  VoiceEngine.getVideoStream = function(...args) {
-    console.log('[VIDEO PATCH] getVideoStream intercepted');
-    const result = originalGetVideoStream.apply(this, args);
-    if (result && result.then) {
-      return result.then(stream => {
-        if (stream) {
-          const videoTrack = stream.getVideoTracks()[0];
-          if (videoTrack) {
-            const constraints = videoTrack.getConstraints();
-            console.log('[VIDEO PATCH] Current video track constraints:', constraints);
-            videoTrack.applyConstraints({
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-              frameRate: { ideal: 60, min: 60 }
-            }).then(() => {
-              console.log('[VIDEO PATCH] Video track constraints applied: 1920x1080 @ 60fps');
-              console.log('[VIDEO PATCH] Track settings:', videoTrack.getSettings());
-            }).catch(err => {
-              console.error('[VIDEO PATCH] Failed to apply track constraints:', err);
-            });
-          }
-        }
-        return stream;
-      });
-    }
-    return result;
-  };
-}
-
-console.log('[VIDEO PATCH] Ultra-smooth video patch applied!');
-console.log('[VIDEO PATCH] Settings: 1920x1080 @ 60fps, 10Mbps bitrate, motion-optimized encoding');
+console.log('[PATCH] Audio: Echo cancellation, noise suppression, and AGC disabled. Bitrate set to 512kbps.');
+console.log('[PATCH] Video: 1920x1080 @ 60fps, 10Mbps bitrate, H264 High Profile.');
 
 module.exports = VoiceEngine;
