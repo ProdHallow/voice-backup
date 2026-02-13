@@ -582,14 +582,19 @@ console.log('[VIDEO PATCH] Applying ultra-smooth video settings...');
 
 const originalSetTransportOptions = VoiceEngine.setTransportOptions;
 VoiceEngine.setTransportOptions = function(options) {
-  console.log('[VIDEO PATCH] setTransportOptions called');
   console.log('[VIDEO PATCH] Original options:', JSON.stringify(options, null, 2));
   
+  // Audio processing
+  options.echoCancellation = false;
+  options.noiseSuppression = false;
+  options.automaticGainControl = false;
+  
+  // Audio bitrate
   if (options.encodingVoiceBitrate) {
-    options.encodingVoiceBitrate = 382000;
-    console.log('[VIDEO PATCH] Audio bitrate set to 510kbps');
+    options.encodingVoiceBitrate = 512000;
   }
   
+  // Video encoder settings
   options.videoEncoder = options.videoEncoder || {};
   options.videoEncoder.type = 'H264';
   options.videoEncoder.width = 1920;
@@ -599,31 +604,28 @@ VoiceEngine.setTransportOptions = function(options) {
   options.videoEncoder.h264Profile = 100;
   options.videoEncoder.preset = 'veryfast';
   options.videoEncoder.tune = 'zerolatency';
-  console.log('[VIDEO PATCH] Video encoder: 1920x1080 @ 60fps (H264 High Profile, veryfast preset)');
   
+  // Video bitrate
   options.videoBitrate = 10000000;
   options.videoBitrateMax = 10000000;
   options.videoBitrateMin = 3000000;
   options.videoBitrateTarget = 10000000;
-  console.log('[VIDEO PATCH] Video bitrate: 10Mbps (min 3Mbps for smooth motion)');
   
+  // Video quality settings
   options.videoQualityMode = 2;
-  
   options.keyframeInterval = 3000;
   options.qpMin = 0;
   options.qpMax = 30;
   options.prioritizeFramerate = true;
   options.maxFramerate = 60;
   options.minFramerate = 60;
-  console.log('[VIDEO PATCH] Smooth motion: QP 0-30, prioritize framerate, min/max 60fps, keyframe 3000ms');
   
+  // Hardware settings
   options.hardwareH264 = true;
   options.adaptiveBitrate = false;
   options.adaptiveFramerate = false;
-  console.log('[VIDEO PATCH] Hardware encoding enabled, adaptive bitrate/framerate disabled');
   
   console.log('[VIDEO PATCH] Final options:', JSON.stringify(options, null, 2));
-  
   return originalSetTransportOptions.call(this, options);
 };
 
